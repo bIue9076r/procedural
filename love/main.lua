@@ -2,6 +2,9 @@ if jit then jit.off() end
 love.graphics.setDefaultFilter("nearest", "nearest")
 math.randomseed(os.time())
 
+WalkTime = 0
+NoCollide = false
+
 Empty = 0
 Blue = 1
 Red = 2
@@ -69,17 +72,18 @@ function Board:draw()
 		local j = v.x
 		local i = v.y
 		if v.color == Blue then
-			love.graphics.setColor(0,0,1)
+			love.graphics.setColor(0,0,0.7)
 		elseif v.color == Red then
-			love.graphics.setColor(1,0,0)
+			love.graphics.setColor(0.7,0,0)
 		elseif v.color == Green then
-			love.graphics.setColor(0,1,0)
+			love.graphics.setColor(0,0.7,0)
 		elseif v.color == Yellow then
-			love.graphics.setColor(1,1,0)
+			love.graphics.setColor(0.7,0.7,0)
 		end
 		love.graphics.rectangle("fill",j*Tilesize + (Tilesize/4),i*Tilesize + (Tilesize/4),Tilesize/2,Tilesize/2)
-		love.graphics.setColor(1,1,1)
+		love.graphics.setColor(0,0,0)
 		love.graphics.rectangle("line",j*Tilesize + (Tilesize/4),i*Tilesize + (Tilesize/4),Tilesize/2,Tilesize/2)
+		love.graphics.setColor(1,1,1)
 	end
 end
 
@@ -111,46 +115,62 @@ end
 
 function Walker:RandomWalk(M)
 	if (self.x >= 1) and (self.x <= M.x) and (self.y >= 1) and (self.y <= M.y) then
-		local n = math.random(1,5)
+		local n = math.random(1,4)
 		if n == 1 then
 			-- right
 			local x = self.x + 1
-			if x <= M.x and ((M.tiles[self.y][x] == Empty) or (M.tiles[self.y][x] == self.color)) then
+			if x <= M.x and ((M.tiles[self.y][x] == Empty) or (M.tiles[self.y][x] == self.color) or NoCollide) then
 				self.x = x
 				M.tiles[self.y][self.x] = self.color
 			end
 		elseif n == 2 then
 			-- left
 			local x = self.x - 1
-			if x >= 1 and ((M.tiles[self.y][x] == Empty) or (M.tiles[self.y][x] == self.color)) then
+			if x >= 1 and ((M.tiles[self.y][x] == Empty) or (M.tiles[self.y][x] == self.color) or NoCollide) then
 				self.x = x
 				M.tiles[self.y][self.x] = self.color
 			end
 		elseif n == 3 then
 			-- up
 			local y = self.y + 1
-			if y <= M.y and ((M.tiles[y][self.x] == Empty) or (M.tiles[y][self.x] == self.color)) then
+			if y <= M.y and ((M.tiles[y][self.x] == Empty) or (M.tiles[y][self.x] == self.color) or NoCollide) then
 				self.y = y
 				M.tiles[self.y][self.x] = self.color
 			end
 		elseif n == 4 then
 			-- down
 			local y = self.y - 1
-			if y >= 1 and ((M.tiles[y][self.x] == Empty) or (M.tiles[y][self.x] == self.color)) then
+			if y >= 1 and ((M.tiles[y][self.x] == Empty) or (M.tiles[y][self.x] == self.color) or NoCollide) then
 				self.y = y
 				M.tiles[self.y][self.x] = self.color
 			end
-		elseif n == 5 then
-			-- nothing
 		end
 	end
 end
 
+function Board:RandomWalk()
+	for i,v in pairs(self.walkers) do
+		v:RandomWalk(self)
+	end
+end
+
+function IncreaseWalkTime()
+	WalkTime = math.min(5,WalkTime + 0.1)
+end
+
+function DecreaseWalkTime()
+	WalkTime = math.max(0,WalkTime - 0.1)
+end
+
+function ToggleCollision()
+	NoCollide = not NoCollide
+end
+
 Map = Board.new(48,36)
-Walk1 = Walker.new(Blue,1,1,Map)
-Walk2 = Walker.new(Red,14,1,Map)
-Walk3 = Walker.new(Green,1,10,Map)
-Walk4 = Walker.new(Yellow,14,10,Map)
+Walker.new(Blue,1,1,Map)
+Walker.new(Red,Map.x,1,Map)
+Walker.new(Green,1,Map.y,Map)
+Walker.new(Yellow,Map.x,Map.y,Map)
 
 function love.load()
 	
@@ -159,22 +179,31 @@ end
 function love.update(dt)
 	WalkerTimer = WalkerTimer or 0
 	WalkerTimer = WalkerTimer + dt
-	-- if WalkerTimer > 0.125 then
-		Walk1:RandomWalk(Map)
-		Walk2:RandomWalk(Map)
-		Walk3:RandomWalk(Map)
-		Walk4:RandomWalk(Map)
+	if WalkerTimer > WalkTime then
+		Map:RandomWalk()
 		WalkerTimer = 0
-	-- end
+	end
 end
 
 function love.keypressed(key)
 	if key == "return" then
 		Map = Board.new(48,36)
-		Walk1 = Walker.new(Blue,1,1,Map)
-		Walk2 = Walker.new(Red,14,1,Map)
-		Walk3 = Walker.new(Green,1,10,Map)
-		Walk4 = Walker.new(Yellow,14,10,Map)
+		Walker.new(Blue,1,1,Map)
+		Walker.new(Red,Map.x,1,Map)
+		Walker.new(Green,1,Map.y,Map)
+		Walker.new(Yellow,Map.x,Map.y,Map)
+	end
+
+	if key == "-" then
+		DecreaseWalkTime()
+	end
+
+	if key == "=" then
+		IncreaseWalkTime()
+	end
+
+	if key == "c" then
+		ToggleCollision()
 	end
 end
 
