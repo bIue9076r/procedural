@@ -155,22 +155,45 @@ function Board:RandomWalk()
 end
 
 function IncreaseWalkTime()
-	WalkTime = math.min(5,WalkTime + 0.1)
+	WalkTime = math.min(5,WalkTime + 0.01)
 end
 
 function DecreaseWalkTime()
-	WalkTime = math.max(0,WalkTime - 0.1)
+	WalkTime = math.max(0,WalkTime - 0.01)
 end
 
 function ToggleCollision()
 	NoCollide = not NoCollide
 end
 
-Map = Board.new(48,36)
-Walker.new(Blue,1,1,Map)
-Walker.new(Red,Map.x,1,Map)
-Walker.new(Green,1,Map.y,Map)
-Walker.new(Yellow,Map.x,Map.y,Map)
+function ResetMap()
+	Map = Board.new(48,36)
+	Walker.new(Blue,1,1,Map)
+	Walker.new(Red,Map.x,1,Map)
+	Walker.new(Green,1,Map.y,Map)
+	Walker.new(Yellow,Map.x,Map.y,Map)
+end
+
+ResetMap()
+
+Wtr_f = 0
+Wti_f = 0
+Wc_f = 0
+R_f = 0
+
+function TintFocus(t)
+	if t <= 0 then
+		love.graphics.setColor(1,1,1)
+	else
+		local T = math.min(t,0.25)/0.25
+		local c = 1*(1 - T) + 0.7*T
+		love.graphics.setColor(c,c,c)
+	end
+end
+
+function Inside(x,y,lx,ly,w,h)
+	return (x >= lx) and (x <= lx + w) and (y >= ly) and (y <= ly + h)
+end
 
 function love.load()
 	
@@ -183,15 +206,36 @@ function love.update(dt)
 		Map:RandomWalk()
 		WalkerTimer = 0
 	end
+
+	local x, y = love.mouse.getPosition()
+	if Inside(x,y,65,655,25,25) then
+		Wtr_f = Wtr_f + dt
+	else
+		Wtr_f = 0
+	end
+
+	if Inside(x,y,95,655,25,25) then
+		Wti_f = Wti_f + dt
+	else
+		Wti_f = 0
+	end
+
+	if Inside(x,y,280,655,25,25) then
+		Wc_f = Wc_f + dt
+	else
+		Wc_f = 0
+	end
+
+	if Inside(x,y,500,655,25,25) then
+		R_f = R_f + dt
+	else
+		R_f = 0
+	end
 end
 
 function love.keypressed(key)
-	if key == "return" then
-		Map = Board.new(48,36)
-		Walker.new(Blue,1,1,Map)
-		Walker.new(Red,Map.x,1,Map)
-		Walker.new(Green,1,Map.y,Map)
-		Walker.new(Yellow,Map.x,Map.y,Map)
+	if key == "return" or key == "r" then
+		ResetMap()
 	end
 
 	if key == "-" then
@@ -208,9 +252,42 @@ function love.keypressed(key)
 end
 
 function love.mousepressed(x,y,button)
-	
+	if Wtr_f > 0 then
+		DecreaseWalkTime()
+	end
+
+	if Wti_f > 0 then
+		IncreaseWalkTime()
+	end
+
+	if Wc_f > 0 then
+		ToggleCollision()
+	end
+
+	if R_f > 0 then
+		ResetMap()
+	end
 end
 
 function love.draw()
 	Map:draw()
+	love.graphics.print("Walk Time: "..string.format("%.02f",WalkTime).." +/-",50,625)
+	love.graphics.print("Collide (c): "..tostring(not NoCollide),250,625)
+	love.graphics.print("Reset (enter/return)",450,625)
+
+	TintFocus(Wtr_f)
+	love.graphics.rectangle("fill",65,655,25,25)
+	love.graphics.print({{0,0,0},"-"},65 + 8,660)
+
+	TintFocus(Wti_f)
+	love.graphics.rectangle("fill",95,655,25,25)
+	love.graphics.print({{0,0,0},"+"},95 + 8,660)
+
+	TintFocus(Wc_f)
+	love.graphics.rectangle("fill",280,655,25,25)
+	love.graphics.print({{0,0,0},"C"},280 + 8,660)
+
+	TintFocus(R_f)
+	love.graphics.rectangle("fill",500,655,25,25)
+	love.graphics.print({{0,0,0},"R"},500 + 8,660)
 end
