@@ -290,4 +290,5 @@ function love.draw()
 	TintFocus(R_f)
 	love.graphics.rectangle("fill",500,655,25,25)
 	love.graphics.print({{0,0,0},"R"},500 + 8,660)
+	love.graphics.setColor(1,1,1)
 end

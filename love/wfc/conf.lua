@@ -3,7 +3,7 @@ function love.conf(t)
 	t.console = true
 	t.window.title = "Wave Function Collapse"
 	t.window.width = 800
-	t.window.height = 600
+	t.window.height = 700
 	t.window.minwidth = 1
 	t.window.minheight = 1
 	t.window.fullscreen = false

@@ -1,8 +1,9 @@
 if jit then jit.off() end
 love.graphics.setDefaultFilter("nearest", "nearest")
--- math.randomseed(os.time())
+math.randomseed(os.time())
 
-ObservationTime = 0.1
+ObservationTime = 0.05
+NoConstrain = false
 
 Superposition = 0
 Grass = 1
@@ -131,12 +132,12 @@ function Board:draw()
 			local n = self.tiles[i][j]
 			if n == Superposition then
 				love.graphics.setColor(1,1,1)
-				love.graphics.rectangle("line",j*Tilesize,i*Tilesize,Tilesize,Tilesize)
+				love.graphics.rectangle("line",j*Tilesize - 16,i*Tilesize - 24,Tilesize,Tilesize)
 			else
 				local img = Images[n]
 				if img then
-					love.graphics.draw(img,j*Tilesize,i*Tilesize)
-					love.graphics.print(string.format("%d %d",j,i),j*Tilesize,i*Tilesize)
+					love.graphics.draw(img,j*Tilesize - 16,i*Tilesize - 24)
+					love.graphics.print(string.format("%d %d",j,i),j*Tilesize - 16,i*Tilesize - 24)
 				end
 			end
 		end
@@ -183,7 +184,7 @@ function Board:Observe()
 											[Right_Bud] = Right_Bud,[Up_Bud] = Up_Bud,[Down_Bud] = Down_Bud,[City] = City}
 			)
 
-			if (up) or (down) or (left) or (right) then
+			if ((up) or (down) or (left) or (right)) and (not NoConstrain) then
 				if (up == Grass) then
 					allowed:disallowList({Cross,Vertical,Left_Up_L,Right_Up_L,Down_Bud})
 				end
@@ -283,10 +284,6 @@ function Board:Observe()
 				if (left == City) then
 					allowed:disallowList({Cross,Horizontal,Left_Down_L,Left_Up_L,Left_Bud})
 				end
-			else
-				for i = Cross,City do
-					allowed:disallow(i)
-				end
 			end
 
 			allowed = allowed:getList()
@@ -312,6 +309,10 @@ function DecreaseObserveTime()
 	ObservationTime = math.max(0,ObservationTime - 0.01)
 end
 
+function ToggleConstrain()
+	NoConstrain = not NoConstrain
+end
+
 function ResetMap()
 	Map = Board.new(11,8)
 end
@@ -320,6 +321,7 @@ ResetMap()
 
 Otr_f = 0
 Oti_f = 0
+Oc_f = 0
 R_f = 0
 
 function TintFocus(t)
@@ -349,18 +351,88 @@ function love.update(dt)
 	end
 
 	local x, y = love.mouse.getPosition()
+	if Inside(x,y,65,655,25,25) then
+		Otr_f = Otr_f + dt
+	else
+		Otr_f = 0
+	end
+
+	if Inside(x,y,95,655,25,25) then
+		Oti_f = Oti_f + dt
+	else
+		Oti_f = 0
+	end
+
+	if Inside(x,y,280,655,25,25) then
+		Oc_f = Oc_f + dt
+	else
+		Oc_f = 0
+	end
+
+	if Inside(x,y,500,655,25,25) then
+		R_f = R_f + dt
+	else
+		R_f = 0
+	end
 end
 
 function love.keypressed(key)
 	if key == "return" or key == "r" then
 		ResetMap()
 	end
+
+	if key == "-" then
+		DecreaseObserveTime()
+	end
+
+	if key == "=" then
+		IncreaseObserveTime()
+	end
+
+	if key == "c" then
+		ToggleConstrain()
+	end
 end
 
 function love.mousepressed(x,y,button)
-	
+	if Otr_f > 0 then
+		DecreaseObserveTime()
+	end
+
+	if Oti_f > 0 then
+		IncreaseObserveTime()
+	end
+
+	if Oc_f > 0 then
+		ToggleConstrain()
+	end
+
+	if R_f > 0 then
+		ResetMap()
+	end
 end
 
 function love.draw()
 	Map:draw()
+
+	love.graphics.print("Observe Time: "..string.format("%.02f",ObservationTime).." +/-",50,625)
+	love.graphics.print("Constrain (c): "..tostring(not NoConstrain),250,625)
+	love.graphics.print("Reset (enter/return)",450,625)
+
+	TintFocus(Otr_f)
+	love.graphics.rectangle("fill",65,655,25,25)
+	love.graphics.print({{0,0,0},"-"},65 + 8,660)
+
+	TintFocus(Oti_f)
+	love.graphics.rectangle("fill",95,655,25,25)
+	love.graphics.print({{0,0,0},"+"},95 + 8,660)
+
+	TintFocus(Oc_f)
+	love.graphics.rectangle("fill",280,655,25,25)
+	love.graphics.print({{0,0,0},"C"},280 + 8,660)
+
+	TintFocus(R_f)
+	love.graphics.rectangle("fill",500,655,25,25)
+	love.graphics.print({{0,0,0},"R"},500 + 8,660)
+	love.graphics.setColor(1,1,1)
 end
