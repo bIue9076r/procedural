@@ -4,6 +4,8 @@ math.randomseed(os.time())
 
 ObservationTime = 0.05
 NoConstrain = false
+GrassWeight = 3
+NoBuds = true
 
 Superposition = 0
 Grass = 1
@@ -45,7 +47,7 @@ function AllowedList.new(list)
 
 	if list then
 		for i,v in pairs(list) do
-			tbl.list[i] = {allowed = true, val = v}
+			tbl.list[i] = {allowed = true, val = v, weight = 1}
 		end
 	end
 
@@ -54,6 +56,16 @@ function AllowedList.new(list)
 	}
 
 	return setmetatable(tbl,mt)
+end
+
+function AllowedList:setWeight(i,n)
+	if self.list[i] then
+		n = n or 1
+		if n < 1 then
+			n = 1
+		end
+		self.list[i].weight = n
+	end
 end
 
 function AllowedList:allow(i)
@@ -82,7 +94,9 @@ function AllowedList:getList()
 	local tbl = {}
 	for i,v in pairs(self.list) do
 		if v.allowed then
-			table.insert(tbl,v.val)
+			for n = 1,v.weight do
+				table.insert(tbl,v.val)
+			end
 		end
 	end
 
@@ -137,7 +151,7 @@ function Board:draw()
 				local img = Images[n]
 				if img then
 					love.graphics.draw(img,j*Tilesize - 16,i*Tilesize - 24)
-					love.graphics.print(string.format("%d %d",j,i),j*Tilesize - 16,i*Tilesize - 24)
+					-- love.graphics.print(string.format("%d %d",j,i),j*Tilesize - 16,i*Tilesize - 24)
 				end
 			end
 		end
@@ -178,11 +192,21 @@ function Board:Observe()
 				end
 			end
 
-			local allowed = AllowedList.new({[Grass] = Grass,[Cross] = Cross,[Horizontal] = Horizontal,
+			local allowed
+			if NoBuds then
+				allowed = AllowedList.new({[Grass] = Grass,[Cross] = Cross,[Horizontal] = Horizontal,
+												[Vertical] = Vertical,[Left_Down_L] = Left_Down_L,[Left_Up_L] = Left_Up_L,
+												[Right_Down_L] = Right_Down_L,[Right_Up_L] = Right_Up_L,[City] = City}
+				)
+			else
+				allowed = AllowedList.new({[Grass] = Grass,[Cross] = Cross,[Horizontal] = Horizontal,
 											[Vertical] = Vertical,[Left_Down_L] = Left_Down_L,[Left_Up_L] = Left_Up_L,
 											[Right_Down_L] = Right_Down_L,[Right_Up_L] = Right_Up_L,[Left_Bud] = Left_Bud,
 											[Right_Bud] = Right_Bud,[Up_Bud] = Up_Bud,[Down_Bud] = Down_Bud,[City] = City}
-			)
+				)
+			end
+
+			allowed:setWeight(Grass,GrassWeight)
 
 			if ((up) or (down) or (left) or (right)) and (not NoConstrain) then
 				if (up == Grass) then
@@ -313,6 +337,18 @@ function ToggleConstrain()
 	NoConstrain = not NoConstrain
 end
 
+function DecreaseGrassWeight()
+	GrassWeight = math.max(1,GrassWeight - 1)
+end
+
+function IncreaseGrassWeight()
+	GrassWeight = GrassWeight + 1
+end
+
+function ToggleBuds()
+	NoBuds = not NoBuds
+end
+
 function ResetMap()
 	Map = Board.new(11,8)
 end
@@ -322,6 +358,9 @@ ResetMap()
 Otr_f = 0
 Oti_f = 0
 Oc_f = 0
+Gwr_f = 0
+Gwi_f = 0
+B_f = 0
 R_f = 0
 
 function TintFocus(t)
@@ -351,25 +390,43 @@ function love.update(dt)
 	end
 
 	local x, y = love.mouse.getPosition()
-	if Inside(x,y,65,655,25,25) then
+	if Inside(x,y,200,570,25,25) then
 		Otr_f = Otr_f + dt
 	else
 		Otr_f = 0
 	end
 
-	if Inside(x,y,95,655,25,25) then
+	if Inside(x,y,230,570,25,25) then
 		Oti_f = Oti_f + dt
 	else
 		Oti_f = 0
 	end
 
-	if Inside(x,y,280,655,25,25) then
+	if Inside(x,y,450,570,25,25) then
 		Oc_f = Oc_f + dt
 	else
 		Oc_f = 0
 	end
 
-	if Inside(x,y,500,655,25,25) then
+	if Inside(x,y,200,645,25,25) then
+		Gwr_f = Gwr_f + dt
+	else
+		Gwr_f = 0
+	end
+
+	if Inside(x,y,230,645,25,25) then
+		Gwi_f = Gwi_f + dt
+	else
+		Gwi_f = 0
+	end
+
+	if Inside(x,y,450,645,25,25) then
+		B_f = B_f + dt
+	else
+		B_f = 0
+	end
+
+	if Inside(x,y,600,600,25,25) then
 		R_f = R_f + dt
 	else
 		R_f = 0
@@ -389,8 +446,20 @@ function love.keypressed(key)
 		IncreaseObserveTime()
 	end
 
+	if key == "," then
+		DecreaseGrassWeight()
+	end
+
+	if key == "." then
+		IncreaseGrassWeight()
+	end
+
 	if key == "c" then
 		ToggleConstrain()
+	end
+
+	if key == "b" then
+		ToggleBuds()
 	end
 end
 
@@ -407,6 +476,18 @@ function love.mousepressed(x,y,button)
 		ToggleConstrain()
 	end
 
+	if Gwr_f > 0 then
+		DecreaseGrassWeight()
+	end
+
+	if Gwi_f > 0 then
+		IncreaseGrassWeight()
+	end
+
+	if B_f > 0 then
+		ToggleBuds()
+	end
+
 	if R_f > 0 then
 		ResetMap()
 	end
@@ -415,24 +496,39 @@ end
 function love.draw()
 	Map:draw()
 
-	love.graphics.print("Observe Time: "..string.format("%.02f",ObservationTime).." +/-",50,625)
-	love.graphics.print("Constrain (c): "..tostring(not NoConstrain),250,625)
-	love.graphics.print("Reset (enter/return)",450,625)
+	love.graphics.print("Observe Time: "..string.format("%.02f",ObservationTime).." +/-",50,575)
+	love.graphics.print("Constrain (c): "..tostring(not NoConstrain),300,575)
+	love.graphics.print("Reset (enter/return)",550,575)
+	love.graphics.print("Grass Weight: "..string.format("%d",GrassWeight),50,650)
+	love.graphics.print("Road Buds (b): "..tostring(not NoBuds),300,650)
 
 	TintFocus(Otr_f)
-	love.graphics.rectangle("fill",65,655,25,25)
-	love.graphics.print({{0,0,0},"-"},65 + 8,660)
+	love.graphics.rectangle("fill",200,570,25,25)
+	love.graphics.print({{0,0,0},"-"},200 + 8,575)
 
 	TintFocus(Oti_f)
-	love.graphics.rectangle("fill",95,655,25,25)
-	love.graphics.print({{0,0,0},"+"},95 + 8,660)
+	love.graphics.rectangle("fill",230,570,25,25)
+	love.graphics.print({{0,0,0},"+"},230 + 8,575)
 
 	TintFocus(Oc_f)
-	love.graphics.rectangle("fill",280,655,25,25)
-	love.graphics.print({{0,0,0},"C"},280 + 8,660)
+	love.graphics.rectangle("fill",450,570,25,25)
+	love.graphics.print({{0,0,0},"C"},450 + 8,575)
+
+	TintFocus(B_f)
+	love.graphics.rectangle("fill",450,645,25,25)
+	love.graphics.print({{0,0,0},"B"},450 + 8,650)
 
 	TintFocus(R_f)
-	love.graphics.rectangle("fill",500,655,25,25)
-	love.graphics.print({{0,0,0},"R"},500 + 8,660)
+	love.graphics.rectangle("fill",600,600,25,25)
+	love.graphics.print({{0,0,0},"R"},600 + 8,605)
+
+	TintFocus(Gwr_f)
+	love.graphics.rectangle("fill",200,645,25,25)
+	love.graphics.print({{0,0,0},"<"},200 + 8,650)
+
+	TintFocus(Gwi_f)
+	love.graphics.rectangle("fill",230,645,25,25)
+	love.graphics.print({{0,0,0},">"},230 + 8,650)
+
 	love.graphics.setColor(1,1,1)
 end
